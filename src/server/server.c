@@ -5,14 +5,10 @@
 #include <sys/time.h>
 #include <netinet/tcp.h>
 
-char *file_list[] = { "FILE_1KB", "FILE_10KB", "FILE_100KB", "FILE_1MB", "FILE_10MB", "FILE_100MB", "FILE_1GB" };
-
-// prototypes                                                
-void getDataFromTheClient(int);
-void read_args(int argc, char*argv[]);
-
-int sendFromMemory;
+// global variables
 int serverPort;
+int listenfd;
+char filebuf[MAX_WRITE];
 
 int main (int argc, char *argv[]) {
   socklen_t len;
@@ -35,16 +31,13 @@ int main (int argc, char *argv[]) {
   bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
   listen(listenfd, 20);
 
-  if (sendFromMemory)
-    printf("TCP test application server started... mode: send-from-memory\n");
-  else
-    printf("TCP test application server started... mode: send-from-disk\n");
-  
+  printf("TCP test application server started...\n");
+  printf("Listening port %d!\n", serverPort);
+
   while(1) {
-    // wait for connections                                                                                    
-    len = sizeof(cliaddr);
+    // wait for connections          
     int sockfd;
-    printf("Listening port %d!\n", serverPort);
+    len = sizeof(cliaddr);
     sockfd = accept(listenfd, (struct sockaddr *) &cliaddr, &len);
     
     pid_t pid = fork();
@@ -66,92 +59,67 @@ int main (int argc, char *argv[]) {
 
 // listen client
 void getDataFromTheClient(int sockfd) {
-  uint n;
-  uint total = 0;
-  char buf[50];
-  int fd;
-  struct stat stat_buf;
   uint f_index;
   uint f_size;
-  uint file_id;
-  char filebuf[MAX_WRITE];
+  char buf[50];
 
   printf("%d - Connection established!\n", sockfd);
+
   while(1) {
-    memset(buf, 0, 20);
-    n = read(sockfd, buf, 2 * sizeof(uint));
-    
+    // read request
+    uint n = read(sockfd, buf, 2 * sizeof(uint));
     if (n <= 0)
       break;
     
     memcpy(&f_index, buf, sizeof(uint));
-    memcpy(&file_id, buf + sizeof(uint), sizeof(uint));
+    memcpy(&f_size, buf + sizeof(uint), sizeof(uint));
 
-    if (sendFromMemory) 
-      f_size = file_id;
-    else {      
-      fd = open(file_list[file_id], O_RDONLY);
-      fstat(fd, &stat_buf);
-      f_size = stat_buf.st_size;
-    }
-
-    printf("File request: index: %u size: %d\n", f_index, f_size);
+    // printf("File request: index: %u size: %d\n", f_index, f_size);
     
     // send meta data (f_index and f_size)
-    memcpy(buf + sizeof(uint), &f_size, sizeof(uint));
     write(sockfd, buf, 2 * sizeof(uint));
     
     // send file
-    if (sendFromMemory) {
-      uint total = f_size;
-      do {
-	uint bytes_to_send;
-	if (total > MAX_WRITE)
-	  bytes_to_send = MAX_WRITE;
-	else
-	  bytes_to_send = total;
-	uint bytes_sent = write(sockfd, filebuf, bytes_to_send);
-	//printf("bytes_sent = %d\n", bytes_sent);
-
-	if (bytes_sent <= 0) {
-	  printf("failed to write...\n");
-	  exit(1);
-	}
-	
-	total -= bytes_sent;
-      } while (total > 0);
+    uint total = f_size;
+    do {
+      uint bytes_to_send;
+      if (total > MAX_WRITE)
+	bytes_to_send = MAX_WRITE;
+      else
+	bytes_to_send = total;
+      uint bytes_sent = write(sockfd, filebuf, bytes_to_send);
+      // printf("bytes_sent = %d\n", bytes_sent);
       
-    } else {
-      sendfile(sockfd, fd, 0, f_size);
-      close(fd);
-    }
+      if (bytes_sent <= 0) {
+	printf("failed to write...\n");
+	exit(1);
+      }
+      
+      total -= bytes_sent;
+    } while (total > 0); 
   }
 
-  printf("\n%d - Connection closed! Bytes read: %u\n", sockfd, total);
+  printf("\n%d - Connection closed!\n", sockfd);
   close(sockfd);
 }
 
 
 void read_args(int argc, char*argv[]) {
   // default values
-  sendFromMemory = 1;
   serverPort = 5000;
 
   int i = 1;
   while (i < argc) {
-    if (strcmp(argv[i], "-d") == 0) {
-      sendFromMemory = 0;
-      i++;
-    } else if (strcmp(argv[i], "-p") == 0) {
+    if (strcmp(argv[i], "-p") == 0) {
       serverPort = atoi(argv[i+1]);
       i += 2;
     } else {
       printf("invalid option: %s\n", argv[i]);
       printf("usage: server [options]\n");
       printf("options:\n");
-      printf("-d                         send from disk\n");
       printf("-p <value>                 port number (default 5000)\n");
       exit(1);
     }
   }
+
 }

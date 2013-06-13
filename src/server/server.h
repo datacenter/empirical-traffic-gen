@@ -16,8 +16,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define MAX_WRITE 1048576
+#define MAX_WRITE 104857600  // 100MB
 
-int listenfd;
+// prototypes                                                
+void getDataFromTheClient(int sockfd);
+void read_args(int argc, char*argv[]);
+
+
 
 #endif
+
