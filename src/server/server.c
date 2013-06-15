@@ -74,7 +74,7 @@ void getDataFromTheClient(int sockfd) {
     memcpy(&f_index, buf, sizeof(uint));
     memcpy(&f_size, buf + sizeof(uint), sizeof(uint));
 
-    // printf("File request: index: %u size: %d\n", f_index, f_size);
+    printf("File request: index: %u size: %d\n", f_index, f_size);
     
     // send meta data (f_index and f_size)
     write(sockfd, buf, 2 * sizeof(uint));

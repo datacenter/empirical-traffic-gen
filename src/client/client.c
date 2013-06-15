@@ -14,23 +14,7 @@
 //#include <sys/fcntl.h> 
 
 
-char *file_list[] = { "FILE_1KB", "FILE_10KB", "FILE_100KB", "FILE_1MB", "FILE_10MB", "FILE_100MB", "FILE_1GB" };
-
-
-// prototypes
-void *run_iteration(void *ptr);
-void *listen_connection(void *ptr);
-void read_config();
-void read_args(int argc, char *argv[]);
-void set_iteration_variables();
-void open_connections();
-pthread_t *launch_threads();
-void process_stats();
-void run_iterations();
-void cleanup();
-
 // command line arguments
-int sendFromMemory;
 int serverPort;
 char config_name[80];
 
@@ -41,10 +25,9 @@ int *src_port;
 char (*dest_addr)[20];
 
 int num_files;
-char (*fname)[20];
+int *file_size;
 int *file_prob;
 int file_prob_total;
-struct stat *file_stat;
 
 int num_fanouts;
 int *fanout_size;
@@ -56,7 +39,6 @@ int period;
 
 // per-iteration variables
 int *iteration_fanout;
-char **iteration_fname;
 uint *iteration_findex;
 int *iteration_file_size;
 int *iteration_destination;
@@ -140,16 +122,13 @@ void cleanup() {
   free(threads);
   free(dest_file_count);
   
-  free(fname);
+  free(file_size);
   free(file_prob);
-  free(file_stat);
 
   free(fanout_size);
   free(fanout_prob);
 
   free(iteration_fanout);
-  free(iteration_fname);
-  free(iteration_findex);
   free(iteration_file_size);
   free(iteration_destination);  
   free(stop_time);
@@ -158,42 +137,32 @@ void cleanup() {
 
 void process_stats() {
   // stats for all iterations
-  uint max_iter_sec = 0;
   uint max_iter_usec = 0;
-  uint min_iter_sec = 999999;
   uint min_iter_usec = 0;
   uint avg_iter_usec = 0;
   
   // stats per fanout
-  uint *f_max_iter_sec = malloc(num_fanouts * sizeof(uint));
   uint *f_max_iter_usec = malloc(num_fanouts * sizeof(uint));
-  uint *f_min_iter_sec = malloc(num_fanouts * sizeof(uint));
   uint *f_min_iter_usec = malloc(num_fanouts * sizeof(uint));
   uint *f_avg_iter_usec = malloc(num_fanouts * sizeof(uint));
   uint *f_iter_count = malloc(num_fanouts * sizeof(uint));
   
   for (int i = 0; i < num_fanouts; i++) {
-    f_max_iter_sec[i] = 0;
     f_max_iter_usec[i] = 0;
-    f_min_iter_sec[i] = 999999;
     f_min_iter_usec[i] = 0;
     f_avg_iter_usec[i] = 0;
     f_iter_count[i] = 0;
   }
   
   // start per file size
-  uint *f_max_file_sec = malloc(num_files * sizeof(uint));
   uint *f_max_file_usec = malloc(num_files * sizeof(uint));
-  uint *f_min_file_sec = malloc(num_files * sizeof(uint));
   uint *f_min_file_usec = malloc(num_files * sizeof(uint));
   uint *f_avg_file_usec = malloc(num_files * sizeof(uint));
   uint64_t *f_var_file_usec = malloc(num_files * sizeof(uint64_t));
   uint *f_file_count = malloc(num_files * sizeof(uint));
   
   for (int i = 0; i < num_files; i++) {
-    f_max_file_sec[i] = 0;
     f_max_file_usec[i] = 0;
-    f_min_file_sec[i] = 999999;
     f_min_file_usec[i] = 0;
     f_avg_file_usec[i] = 0;
     f_var_file_usec[i] = 0;
@@ -205,7 +174,7 @@ void process_stats() {
     int i_sec;
     struct timeval *i_start;
     struct timeval *i_stop;
-
+    
     for (int j = 0; j < iteration_fanout[i]; j++) {
       uint index = i * num_dest + j;
       
@@ -229,54 +198,36 @@ void process_stats() {
       // measure file transfer completion time
       int f_index;
       for (int k = 0; k < num_files; k++) {
-	if (strcmp(fname[k], iteration_fname[index]) == 0) {
+	if (file_size[k] == iteration_file_size[index]) {
 	  f_index = k;
 	  break;
 	}
       }
       int f_sec = stop_time[index].tv_sec - start_time[index].tv_sec;
-      int f_usec = stop_time[index].tv_usec - start_time[index].tv_usec;
+      int f_usec = stop_time[index].tv_usec - start_time[index].tv_usec;      
+      f_usec += (f_sec * 1000000);
       
-      if (f_usec < 0) {
-	f_usec += 1000000;
-	f_sec--;
-      }
-      
-      if (f_sec > f_max_file_sec[f_index] || 
-	  (f_sec == f_max_file_sec[f_index] && f_usec > f_max_file_usec[f_index])) {
-	f_max_file_sec[f_index] = f_sec;
+      if (f_usec > f_max_file_usec[f_index]) 
 	f_max_file_usec[f_index] = f_usec;
-      }
       
-      if (f_sec < f_min_file_sec[f_index] || 
-	  (f_sec == f_min_file_sec[f_index] && f_usec < f_min_file_usec[f_index])) {
-	f_min_file_sec[f_index] = f_sec;
+      if (f_usec < f_min_file_usec[f_index])
 	f_min_file_usec[f_index] = f_usec;
-      }
       
       f_avg_file_usec[f_index] += f_usec;
-      f_var_file_usec[f_index] += (f_usec * f_usec);
+      f_var_file_usec[f_index] += (((int64_t)f_usec) * f_usec);
       f_file_count[f_index]++;
     }
     
     // measure iteration completion time
     i_sec = i_stop->tv_sec - i_start->tv_sec;
     i_usec = i_stop->tv_usec - i_start->tv_usec;
-    
-    if (i_usec < 0) {
-      i_usec += 1000000;
-      i_sec--;
-    }
-    
-    if (i_sec > max_iter_sec || (i_sec == max_iter_sec && i_usec > max_iter_usec)) {
-      max_iter_sec = i_sec;
+    i_usec += (i_sec*1000000);
+        
+    if (i_usec > max_iter_usec)
       max_iter_usec = i_usec;
-    }
     
-    if (i_sec < min_iter_sec || (i_sec == min_iter_sec && i_usec < min_iter_usec)) {
-      min_iter_sec = i_sec;
+    if (i_usec < min_iter_usec)
       min_iter_usec = i_usec;
-    }
     
     avg_iter_usec += i_usec;
     
@@ -289,53 +240,47 @@ void process_stats() {
       }
     }
     
-    if (i_sec > f_max_iter_sec[f_index] || 
-	(i_sec == f_max_iter_sec[f_index] && i_usec > f_max_iter_usec[f_index])) {
-      f_max_iter_sec[f_index] = i_sec;
+    if (i_usec > f_max_iter_usec[f_index]) 
       f_max_iter_usec[f_index] =i_usec;
-    }
     
-    if (i_sec < f_min_iter_sec[f_index] || 
-	(i_sec == f_min_iter_sec[f_index] && i_usec < f_min_iter_usec[f_index])) {
-      f_min_iter_sec[f_index] = i_sec;
+    if (i_usec < f_min_iter_usec[f_index]) 
       f_min_iter_usec[f_index] = i_usec;
-    }
-    
+       
     f_avg_iter_usec[f_index] += i_usec;
     f_iter_count[f_index]++;
     
-    printf("Iteration: %d, duration: %u sec %u usec\n", i, i_sec, i_usec);
+    printf("Iteration: %d, duration: %u usec\n", i, i_usec);
   }
   
   printf("=== Stats for fanout sizes ===\n");  
   for (int i = 0 ; i < num_fanouts; i++) {
     printf("Fanout: %d - count: %d\n", fanout_size[i], f_iter_count[i]);
     if (f_iter_count[i] > 0) {
-      printf("Max duration : %u sec, %u usec\n", f_max_iter_sec[i], f_max_iter_usec[i]);
-      printf("Avg iteration: 0 sec, %u usec\n", f_avg_iter_usec[i] / f_iter_count[i]);
-      printf("Min duration: %u sec, %u usec\n", f_min_iter_sec[i], f_min_iter_usec[i]);
+      printf("Max duration : %u usec\n", f_max_iter_usec[i]);
+      printf("Avg iteration: %u usec\n", f_avg_iter_usec[i] / f_iter_count[i]);
+      printf("Min duration:  %u usec\n", f_min_iter_usec[i]);
     }
   }
   
   
   printf("=== Stats for file sizes ===\n");  
   for (int i = 0 ; i < num_files; i++) {
-    printf("%s - count: %d\n", fname[i], f_file_count[i]);
+    printf("%d - count: %d\n", file_size[i], f_file_count[i]);
     if (f_file_count[i] > 0) {
       uint avg_val = f_avg_file_usec[i] / f_file_count[i];
       uint64_t var_val = f_var_file_usec[i] / f_file_count[i];
-      var_val -= (avg_val * avg_val);
-      printf("Max duration : %u sec, %u usec\n", f_max_file_sec[i], f_max_file_usec[i]);
-      printf("Avg iteration: 0 sec, %u usec\n", avg_val);
-      printf("Variance: %llu, std dev: %u\n", var_val, (uint)sqrt((uint)var_val));
-      printf("Min duration: %u sec, %u usec\n", f_min_file_sec[i], f_min_file_usec[i]);
+      var_val -= (((uint64_t)avg_val) * avg_val);
+      printf("Max duration : %u usec\n", f_max_file_usec[i]);
+      printf("Avg iteration: %u usec\n", avg_val);
+      printf("Standard deviation: %u usec\n", (uint)sqrt(var_val));
+      printf("Min duration: %u usec\n", f_min_file_usec[i]);
     }
   }
   
   printf("=== Stats for all iterations ===\n");
-  printf("Max iteration: %u sec, %u usec\n", max_iter_sec, max_iter_usec);
-  printf("Avg iteration: 0 sec, %u usec\n", avg_iter_usec / iter);
-  printf("Min iteration: %u sec, %u usec\n", min_iter_sec, min_iter_usec);
+  printf("Max iteration: %u usec\n", max_iter_usec);
+  printf("Avg iteration: %u usec\n", avg_iter_usec / iter);
+  printf("Min iteration: %u usec\n", min_iter_usec);
 
 }
 
@@ -397,8 +342,6 @@ void open_connections() {
 void set_iteration_variables() {
   // generate fanout and files sizes for each iteration
   iteration_fanout = malloc(iter * sizeof(int));
-  iteration_fname = malloc(iter * num_dest * sizeof(char *));
-  iteration_findex = malloc(iter * num_dest * sizeof(uint));
   iteration_file_size = malloc(iter * num_dest * sizeof(int));
   iteration_destination = malloc(iter * num_dest * sizeof(int));
   stop_time = malloc(iter * num_dest * sizeof(struct timeval));
@@ -436,18 +379,7 @@ void set_iteration_variables() {
       
       for (int k = 0; k < num_files; k++) {
 	if (val < file_prob[k]) {
-	  iteration_fname[i * num_dest + j] = fname[k];
-	  
-	  int l = 0;
-	  while(1) {
-	    if (strcmp(fname[k], file_list[l]) == 0) {
-	      iteration_findex[i * num_dest + j] = l;
-	      break;
-	    }
-	    l++;
-	  }
-	  
-	  iteration_file_size[i * num_dest + j] = file_stat[k].st_size;
+	  iteration_file_size[i * num_dest + j] = file_size[k];
 	  break;
 	}
 	else {
@@ -462,7 +394,7 @@ void set_iteration_variables() {
       dest_count--;
       dest_list[val] = dest_list[dest_count];
       
-      printf("%d, %d - Dest: %d, File: %s\n", i, j, iteration_destination[i * num_dest +j], iteration_fname[i * num_dest + j]);
+      printf("%d, %d - Dest: %d, File: %d\n", i, j, iteration_destination[i * num_dest +j], iteration_file_size[i * num_dest + j]);
     }
   }
 
@@ -472,33 +404,26 @@ void set_iteration_variables() {
 
 void read_args(int argc, char*argv[]) {
   // default values
-  sendFromMemory = 1;
   strcpy(config_name, "config");
   
   int i = 1;
   while (i < argc) {
-    if (strcmp(argv[i], "-d") == 0) {
-      sendFromMemory = 0;
-      i++;
-    } else if (strcmp(argv[i], "-c") == 0) {
+    if (strcmp(argv[i], "-c") == 0) {
       strcpy(config_name, argv[i+1]);
       i += 2;
     } else {
       printf("invalid option: %s\n", argv[i]);
       printf("usage: server [options]\n");
       printf("options:\n");
-      printf("-d                         send from disk\n");
       printf("-c <name>                  configuration file name\n");
       exit(1);
     }
   }
-
 }
 
 
 void read_config() {
   FILE *fd;
-  int read_fd;
 
   printf("Reading file: %s\n", config_name);
   fd = fopen(config_name, "r");
@@ -524,20 +449,15 @@ void read_config() {
   // file sizes
   fscanf(fd, "files %d\n", &num_files);
   printf("===\nNumber of files: %d\n", num_files);
-  fname = malloc(num_files * sizeof(char[20]));
+  file_size = malloc(num_files * sizeof(int));
   file_prob = malloc(num_files * sizeof(int));
   file_prob_total = 0;
-  file_stat = malloc(num_files * sizeof(struct stat));
   
   for (int i = 0; i < num_files; i++) {
     int tmp;
-    fscanf(fd, "%d file %s %d\n", &tmp, fname[i], &file_prob[i]);
+    fscanf(fd, "%d file %d %d\n", &tmp, &file_size[i], &file_prob[i]);
     file_prob_total += file_prob[i];
-    printf("%d\t- File: %s,\tProb: %d\n", tmp, fname[i], file_prob[i]);
-
-    read_fd = open(fname[i], O_RDONLY);
-    fstat(read_fd, &file_stat[i]);
-    close(read_fd);
+    printf("%d\t- File: %d,\tProb: %d\n", tmp, file_size[i], file_prob[i]);
   }
   printf("Total file size prob: %d\n", file_prob_total);
 
@@ -589,13 +509,10 @@ void *run_iteration(void *ptr) {
     uint index = i * num_dest + j;
     
     memcpy(buf, &index, sizeof(uint));
-    if (sendFromMemory) 
-      memcpy(buf + sizeof(uint), &iteration_file_size[index], sizeof(uint));    
-    else
-      memcpy(buf + sizeof(uint), &iteration_findex[index], sizeof(uint));
-     
+    memcpy(buf + sizeof(uint), &iteration_file_size[index], sizeof(uint));    
+    
     gettimeofday(&start_time[index], NULL);
-
+    
     write(sockets[iteration_destination[index]], buf, 2 * sizeof(uint));
   }
  
@@ -630,10 +547,6 @@ void *listen_connection(void *ptr) {
     while (total < meta_read_size) {
       char readbuf[50];
 
-      //int flags = fcntl(sock, F_GETFL, 0);
-    
-      //fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
-
       n = read(sock,readbuf, meta_read_size);
       memcpy(buf + total, readbuf, n);
       total += n;
@@ -658,16 +571,10 @@ void *listen_connection(void *ptr) {
 	readsize = MAX_READSIZE;
 
       //int flags = fcntl(sock, F_GETFL, 0);
-      
-    
       //fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
       n = read(sock, buf, readsize);
-      
-      //printf("%d - read: %d\n", index, n);
-      
-      if (n > 0) {
-	total -= n;
-      }
+            
+      total -= n;
 
     } while (total > 0 && n > 0);
 

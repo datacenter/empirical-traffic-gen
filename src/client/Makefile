@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O2 -std=gnu99 -pthread
+CFLAGS = -Wall -g -std=gnu99 -pthread
 LINKFLAGS = -lm
 
 SOURCES = client.c
