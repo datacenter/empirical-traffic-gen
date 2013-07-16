@@ -13,8 +13,8 @@ for (( i=0; i<${#server[@]}; i++ ));
 do
     echo "****************************"
     echo "syncing to  ${server[$i]}..."
-#    rsync -pvz FILE* ${user[$i]}\@${server[$i]}:~/traffic_gen
+    rsync -pvz *CDF* ${user[$i]}\@${server[$i]}:~/traffic_gen
     rsync -pvz client ${user[$i]}\@${server[$i]}:~/traffic_gen
     rsync -pvz server ${user[$i]}\@${server[$i]}:~/traffic_gen
-#    rsync -pvz config ${user[$i]}\@${server[$i]}:~/traffic_gen     
+    rsync -pvz scripts/* ${user[$i]}\@${server[$i]}:~/traffic_gen     
 done

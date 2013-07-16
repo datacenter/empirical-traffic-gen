@@ -9,7 +9,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <ctype.h>
-
+#include <errno.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -17,6 +17,8 @@
 #include <arpa/inet.h>
 
 #define MAX_WRITE 104857600  // 100MB
+
+//#define DEBUG
 
 // prototypes                                                
 void getDataFromTheClient(int sockfd);

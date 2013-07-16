@@ -1,9 +1,9 @@
-CC = gcc
-CFLAGS = -Wall -g -std=gnu99 -pthread
+CC = g++
+CFLAGS = -Wall -pthread
 LINKFLAGS = -lm
 
-SOURCES = client.c
-HEADERS = client.h
+SOURCES = ranvar.cc client.c
+HEADERS = ranvar.h client.h
 TARGET = client
 
 .PHONY: all clean tags submit

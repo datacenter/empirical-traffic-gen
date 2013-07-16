@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -g -std=gnu99
+CFLAGS = -Wall -std=gnu99
 
 SOURCES = server.c
 HEADERS = server.h

@@ -9,14 +9,17 @@
 #include <pthread.h>
 #include <signal.h>
 #include <ctype.h>
-
 #include <netdb.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "ranvar.h"
+#include <limits.h>
 
 #define MAX_READSIZE 1048576
+
+//#define DEBUG
 
 // prototypes
 void *run_iteration(void *ptr);
@@ -29,7 +32,7 @@ pthread_t *launch_threads();
 void process_stats();
 void run_iterations();
 void cleanup();
+void write_logFile( char type[15], int size, int duration);
 
-int listenfd;
 
 #endif

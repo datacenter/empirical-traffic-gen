@@ -67,18 +67,26 @@ void getDataFromTheClient(int sockfd) {
 
   while(1) {
     // read request
-    uint n = read(sockfd, buf, 2 * sizeof(uint));
-    if (n <= 0)
+    int n = read(sockfd, buf, 2 * sizeof(uint));
+    if (n < 0) {
+      perror("error in meta-data read");
       break;
+    }
     
     memcpy(&f_index, buf, sizeof(uint));
     memcpy(&f_size, buf + sizeof(uint), sizeof(uint));
 
+#ifdef DEBUG
     printf("File request: index: %u size: %d\n", f_index, f_size);
+#endif 
     
     // send meta data (f_index and f_size)
-    write(sockfd, buf, 2 * sizeof(uint));
-    
+    n = write(sockfd, buf, 2 * sizeof(uint));
+    if (n < 0) {
+      perror("error in meta-data write");
+      break;
+    }
+
     // send file
     uint total = f_size;
     do {
@@ -87,12 +95,11 @@ void getDataFromTheClient(int sockfd) {
 	bytes_to_send = MAX_WRITE;
       else
 	bytes_to_send = total;
-      uint bytes_sent = write(sockfd, filebuf, bytes_to_send);
-      // printf("bytes_sent = %d\n", bytes_sent);
+      int bytes_sent = write(sockfd, filebuf, bytes_to_send);
       
-      if (bytes_sent <= 0) {
-	printf("failed to write...\n");
-	exit(1);
+      if (bytes_sent < 0) {
+	perror("error in file write");
+	break;
       }
       
       total -= bytes_sent;
@@ -102,7 +109,6 @@ void getDataFromTheClient(int sockfd) {
   printf("\n%d - Connection closed!\n", sockfd);
   close(sockfd);
 }
-
 
 void read_args(int argc, char*argv[]) {
   // default values
@@ -121,5 +127,4 @@ void read_args(int argc, char*argv[]) {
       exit(1);
     }
   }
-
 }
