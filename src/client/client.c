@@ -66,6 +66,11 @@ FILE *fd_it;
                   
 int main (int argc, char *argv[]) {
 
+  // initialize random seed
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  srand((time.tv_sec*1000000) + time.tv_usec);
+
   // read command line arguments
   read_args(argc, argv);
 
