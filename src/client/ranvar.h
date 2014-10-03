@@ -18,7 +18,7 @@ public:
 	virtual double value();
 	virtual double interpolate(double u, double x1, double y1, double x2, double y2);
 	virtual double avg();
-	EmpiricalRandomVariable(int interp);
+	EmpiricalRandomVariable(int interp, int seed);
 	~EmpiricalRandomVariable();
 	double& minCDF() { return minCDF_; }
 	double& maxCDF() { return maxCDF_; }
@@ -40,7 +40,7 @@ protected:
 class ExponentialRandomVariable {
  public:
 	virtual double value();
-	ExponentialRandomVariable(double);
+	ExponentialRandomVariable(double, int);
 	virtual inline double avg() { return avg_; };
 	void setavg(double d) { avg_ = d; };
  private:

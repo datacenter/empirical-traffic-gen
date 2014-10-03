@@ -11,13 +11,17 @@
 //  code provided by Giao Nguyen
 */
 
-EmpiricalRandomVariable::EmpiricalRandomVariable(int interp) : minCDF_(0), maxCDF_(1), maxEntry_(32), interpolation_(INTER_DISCRETE), table_(0)
+EmpiricalRandomVariable::EmpiricalRandomVariable(int interp, int s) : minCDF_(0), maxCDF_(1), maxEntry_(32), interpolation_(INTER_DISCRETE), table_(0)
 {
     interpolation_ = interp;
     // initialize random seed
-    struct timeval time;
-    gettimeofday(&time, NULL);
-    gen.seed((time.tv_sec*1000000) + time.tv_usec);
+    if (s)
+      gen.seed(s);
+    else {
+      struct timeval time;
+      gettimeofday(&time, NULL);
+      gen.seed((time.tv_sec*1000000) + time.tv_usec);
+    }    
     uni = std::tr1::uniform_real<double>(minCDF_, maxCDF_);
 }
 
@@ -121,13 +125,17 @@ EmpiricalRandomVariable::~EmpiricalRandomVariable()
 /*
  * Exponential random variable
  */
-ExponentialRandomVariable::ExponentialRandomVariable(double avg)
+ExponentialRandomVariable::ExponentialRandomVariable(double avg, int s)
 {
 	avg_ = avg;
 	// initialize random seed
-	struct timeval time;
-	gettimeofday(&time, NULL);
-	gen.seed((time.tv_sec*1000000) + time.tv_usec);
+	if (s)
+	  gen.seed(s);
+	else {
+	  struct timeval time;
+	  gettimeofday(&time, NULL);
+	  gen.seed((time.tv_sec*1000000) + time.tv_usec);
+	}
 	exponential = std::tr1::exponential_distribution<double>(1 / avg_);
 }
 

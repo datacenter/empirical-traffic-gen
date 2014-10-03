@@ -39,7 +39,7 @@ int *fanout_prob;
 int fanout_prob_total;
 
 int iter;
-int load;
+double load;
 int period;
 
 // per-iteration variables
@@ -63,16 +63,22 @@ int req_file_count;
 int req_index;
 FILE *fd_log;
 FILE *fd_it;
-                  
+        
+int client_num;
+          
 int main (int argc, char *argv[]) {
-
-  // initialize random seed
-  struct timeval time;
-  gettimeofday(&time, NULL);
-  srand((time.tv_sec*1000000) + time.tv_usec);
 
   // read command line arguments
   read_args(argc, argv);
+
+  // initialize random seed
+  if (client_num)
+    srand(client_num);
+  else {
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    srand((time.tv_sec*1000000) + time.tv_usec);
+  }
 
   // read input configuration
   read_config();
@@ -89,6 +95,8 @@ int main (int argc, char *argv[]) {
 
   // launch threads
   threads = launch_threads();
+
+  // usleep(3000000); // wait 3 sec
 
   // run iterations
   run_iterations();
@@ -308,8 +316,9 @@ void open_connections() {
     sock = socket(AF_INET, SOCK_STREAM, 0);
     
     // set socket options
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(sock_opt));
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &sock_opt, sizeof(sock_opt));
-    
+
     // bind to local port if provided; otherwise we use an ephemeral port
     if (src_port[i] > 0) {
       memset(&servaddr, 0, sizeof(servaddr));
@@ -328,7 +337,7 @@ void open_connections() {
     ret = connect(sock, (struct sockaddr *) &servaddr, sizeof(servaddr));
     
     if (ret < 0) {
-      perror("Unable to connect");
+      printf("Unable to connect. error: %s\n", strerror(errno));
       sockets[i] = -1;
       exit(-1);
     }
@@ -412,6 +421,8 @@ void read_args(int argc, char*argv[]) {
   strcpy(config_name, "config");
   strcpy(logFile_name, "log");
   strcpy(logIteration_name, "log");
+  
+  client_num = 0;
 
   int i = 1;
   while (i < argc) {
@@ -422,18 +433,24 @@ void read_args(int argc, char*argv[]) {
       strcpy(logFile_name,argv[i+1]);
       strcpy(logIteration_name, argv[i+1]);
       i +=2;
+    } else if (strcmp(argv[i], "-s") == 0) {
+      client_num = atoi(argv[i+1]);
+      i+=2;
     } else {
       printf("invalid option: %s\n", argv[i]);
       printf("usage: server [options]\n");
       printf("options:\n");
       printf("-c <name>                  configuration file name\n");
       printf("-l <name>                  log file name\n");
+      printf("-s <num>                   seed number\n");
       exit(1);
     }
   }
 
   strcat(logFile_name,"File");
   strcat(logIteration_name,"Iteration");
+
+  printf("client_num=%d\n", client_num);
 }
 
 void write_logFile(char type[15],int  size, int duration){
@@ -471,10 +488,10 @@ void read_config() {
 
   // file sizes
   fscanf(fd, "distribution %s\n", distributionFile);
-  empRV = new EmpiricalRandomVariable(INTER_INTEGRAL);
+  empRV = new EmpiricalRandomVariable(INTER_INTEGRAL, client_num*13);
   empRV->loadCDF(distributionFile);
   printf("loading distributionFile %s\n", distributionFile);
-  printf("avg file size: %u\n", empRV->avg());
+  printf("avg file size: %f\n", empRV->avg());
 
   // fanouts
   fscanf(fd, "fanouts %d\n", &num_fanouts);
@@ -490,8 +507,15 @@ void read_config() {
     printf("%d\t- Fanout: %d,\tProb: %d\n", tmp, fanout_size[i], fanout_prob[i]);
   }
   printf("Total fanout prob: %d\n", fanout_prob_total);
+
+  int valInt, valDec;
+
+  //fscanf(fd, "load %d.%dMbps\n", &valInt, &valDec);
+  //load = valInt + 0.01*valDec;
+  fscanf(fd, "load %lfMbps\n", &load);
+
+  printf("load=%f\n", load);
   
-  fscanf(fd, "load %dMbps\n", &load);
   //fscanf(fd, "period %d\n", &period);
   if (load > 0) {
     period = 8 * empRV->avg() / load;
@@ -504,7 +528,7 @@ void read_config() {
   }
 
   printf("===\nPeriod: %dus\n", period);
-  expRV = new ExponentialRandomVariable(period);
+  expRV = new ExponentialRandomVariable(period, client_num*133);
   
   fscanf(fd, "iterations %d\n", &iter);
   printf("===\nIterations: %d\n", iter);
@@ -543,7 +567,7 @@ void *run_iteration(void *ptr) {
     
     int n = write(sockets[iteration_destination[index]], buf, 2 * sizeof(uint));
     if (n < 0) {
-      perror("error in request write");
+      printf("error in request write: %s\n", strerror(errno)); 
       exit(-1);
     }
   }
@@ -581,7 +605,7 @@ void *listen_connection(void *ptr) {
 
       n = read(sock,readbuf, meta_read_size - total);
       if (n < 0) {
-	perror("error in meta-data read");
+	printf("error in meta-data read: %s\n", strerror(errno));
 	exit(-1);
       }
 

@@ -22,15 +22,26 @@ int main (int argc, char *argv[]) {
   // initialize socket
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
 
+  setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(sock_opt));
   setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY, &sock_opt, sizeof(sock_opt));
 
   memset(&servaddr, 0, sizeof(servaddr));
   servaddr.sin_family = AF_INET;
   servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
   servaddr.sin_port = htons(serverPort);
-  bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
-  listen(listenfd, 20);
-
+  
+  int ret = bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr));
+  if (ret < 0) {
+    fprintf(stderr, "error in bind: %s\n", strerror(errno));
+    exit(-1);
+  }
+  
+  ret = listen(listenfd, 20);
+  if (ret < 0) {
+    fprintf(stderr,"error in listen: %s\n", strerror(errno));
+    exit(-1);
+  }
+  
   printf("TCP test application server started...\n");
   printf("Listening port %d!\n", serverPort);
 
