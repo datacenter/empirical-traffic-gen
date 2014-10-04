@@ -184,8 +184,6 @@ void process_stats() {
   uint file_count = 0;
 
   for (int i = 0; i < iter; i++) {
-    int i_usec;
-    int i_sec;
     struct timeval *i_start;
     struct timeval *i_stop;
     
@@ -213,11 +211,12 @@ void process_stats() {
       int f_sec = stop_time[index].tv_sec - start_time[index].tv_sec;
       int f_usec = stop_time[index].tv_usec - start_time[index].tv_usec;      
       f_usec += (f_sec * 1000000);
+      assert(f_usec >= 0);
       
-      if (f_usec > max_file_usec) 
+      if ((uint)f_usec > max_file_usec) 
 	max_file_usec = f_usec;
       
-      if (f_usec < min_file_usec)
+      if ((uint)f_usec < min_file_usec)
 	min_file_usec = f_usec;
       
       avg_file_usec += f_usec;
@@ -231,14 +230,15 @@ void process_stats() {
     }
     
     // measure iteration completion time
-    i_sec = i_stop->tv_sec - i_start->tv_sec;
-    i_usec = i_stop->tv_usec - i_start->tv_usec;
+    int i_sec = i_stop->tv_sec - i_start->tv_sec;
+    int i_usec = i_stop->tv_usec - i_start->tv_usec;
     i_usec += (i_sec*1000000);
+    assert(i_usec >= 0);
         
-    if (i_usec > max_iter_usec)
+    if ((uint)i_usec > max_iter_usec)
       max_iter_usec = i_usec;
     
-    if (i_usec < min_iter_usec)
+    if ((uint)i_usec < min_iter_usec)
       min_iter_usec = i_usec;
     
     avg_iter_usec += i_usec;
@@ -252,10 +252,10 @@ void process_stats() {
       }
     }
     
-    if (i_usec > f_max_iter_usec[f_index]) 
+    if ((uint)i_usec > f_max_iter_usec[f_index]) 
       f_max_iter_usec[f_index] = i_usec;
     
-    if (i_usec < f_min_iter_usec[f_index]) 
+    if ((uint)i_usec < f_min_iter_usec[f_index]) 
       f_min_iter_usec[f_index] = i_usec;
        
     f_avg_iter_usec[f_index] += i_usec;
@@ -308,7 +308,7 @@ void open_connections() {
   int sock_opt = 1;
   int ret;
 
-  printf("connect to servers\n");
+  printf("Connecting to servers...\n");
   
   for (int i = 0; i < num_dest; i++) {
     struct sockaddr_in servaddr;
@@ -450,10 +450,10 @@ void read_args(int argc, char*argv[]) {
   strcat(logFile_name,"File");
   strcat(logIteration_name,"Iteration");
 
-  printf("client_num=%d\n", client_num);
+  printf("Random seed: %d\n", client_num);
 }
 
-void write_logFile(char type[15],int  size, int duration){
+void write_logFile(const char *type,int  size, int duration){
   if (strcmp(type,"File") == 0){
     fprintf(fd_log, "Size:%u_Duration(usec):%u\n",size,duration); 
   }
@@ -465,7 +465,7 @@ void write_logFile(char type[15],int  size, int duration){
 void read_config() {
   FILE *fd;
 
-  printf("Reading file: %s\n", config_name);
+  printf("Reading configuration file: %s\n", config_name);
   fd = fopen(config_name, "r");
   
   // destinations
@@ -490,8 +490,8 @@ void read_config() {
   fscanf(fd, "distribution %s\n", distributionFile);
   empRV = new EmpiricalRandomVariable(INTER_INTEGRAL, client_num*13);
   empRV->loadCDF(distributionFile);
-  printf("loading distributionFile %s\n", distributionFile);
-  printf("avg file size: %f\n", empRV->avg());
+  printf("Loading distributionFile: %s\n", distributionFile);
+  printf("Avg file size: %.2f bytes\n", empRV->avg());
 
   // fanouts
   fscanf(fd, "fanouts %d\n", &num_fanouts);
@@ -508,13 +508,9 @@ void read_config() {
   }
   printf("Total fanout prob: %d\n", fanout_prob_total);
 
-  int valInt, valDec;
-
-  //fscanf(fd, "load %d.%dMbps\n", &valInt, &valDec);
-  //load = valInt + 0.01*valDec;
   fscanf(fd, "load %lfMbps\n", &load);
 
-  printf("load=%f\n", load);
+  printf("load: %.2f Mbps\n", load);
   
   //fscanf(fd, "period %d\n", &period);
   if (load > 0) {
@@ -527,7 +523,7 @@ void read_config() {
     period = -1;
   }
 
-  printf("===\nPeriod: %dus\n", period);
+  printf("===\nAverage flow inter-arrival period: %dus\n", period);
   expRV = new ExponentialRandomVariable(period, client_num*133);
   
   fscanf(fd, "iterations %d\n", &iter);
@@ -539,9 +535,6 @@ void read_config() {
 
 void *run_iteration(void *ptr) {
   int i = *((int *)ptr);
-  struct timeval tstart, tstop;
-  int usec;
-  int sec;
   char buf[30];
    
   free(ptr);
@@ -551,6 +544,9 @@ void *run_iteration(void *ptr) {
   }
 
 #ifdef DEBUG
+  struct timeval tstart, tstop;
+  int usec;
+  int sec;
   printf("Iteration: %d, fanout: %d\n", i, iteration_fanout[i]);
   gettimeofday(&tstart, NULL);
 #endif
@@ -592,9 +588,9 @@ void *listen_connection(void *ptr) {
   free(ptr);
 
   int sock = sockets[index];
-  char buf[MAX_READSIZE];
+  char buf[READBUF_SIZE];
   int meta_read_size = 2 * sizeof(int);
-  int file_count = 0;
+  uint file_count = 0;
   int n;
 
   while(file_count < dest_file_count[index]) {
@@ -603,7 +599,7 @@ void *listen_connection(void *ptr) {
     while (total < meta_read_size) {
       char readbuf[50];
 
-      n = read(sock,readbuf, meta_read_size - total);
+      n = read(sock, readbuf, meta_read_size - total);
       if (n < 0) {
 	printf("error in meta-data read: %s\n", strerror(errno));
 	exit(-1);
@@ -628,8 +624,8 @@ void *listen_connection(void *ptr) {
 
     do {
       int readsize = total;
-      if (readsize > MAX_READSIZE)
-	readsize = MAX_READSIZE;
+      if (readsize > READBUF_SIZE)
+	readsize = READBUF_SIZE;
 
       n = read(sock, buf, readsize);
             
@@ -637,7 +633,7 @@ void *listen_connection(void *ptr) {
 
     } while (total > 0 && n > 0);
 
-    if (total < 0) {
+    if (total > 0) {
       printf("failed to read: %d\n", total);
       exit(-1);
     }
@@ -663,7 +659,9 @@ void *listen_connection(void *ptr) {
     }
   }
 
-  printf("%d - All files received from destination, total: %d\n", index, file_count);
-  
+  printf("\n%d - All files received from destination, total: %d\n", index, file_count);
+
+  close(sock);
+
   return 0;
 }

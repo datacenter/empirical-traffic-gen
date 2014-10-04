@@ -11,7 +11,7 @@
 //  code provided by Giao Nguyen
 */
 
-EmpiricalRandomVariable::EmpiricalRandomVariable(int interp, int s) : minCDF_(0), maxCDF_(1), maxEntry_(32), interpolation_(INTER_DISCRETE), table_(0)
+EmpiricalRandomVariable::EmpiricalRandomVariable(int interp, int s) : minCDF_(0), maxCDF_(1), maxEntry_(32), table_(0)
 {
     interpolation_ = interp;
     // initialize random seed

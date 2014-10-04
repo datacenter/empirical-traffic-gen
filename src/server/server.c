@@ -43,7 +43,7 @@ int main (int argc, char *argv[]) {
   }
   
   printf("TCP test application server started...\n");
-  printf("Listening port %d!\n", serverPort);
+  printf("Listening port: %d\n", serverPort);
 
   while(1) {
     // wait for connections          
@@ -52,11 +52,15 @@ int main (int argc, char *argv[]) {
     sockfd = accept(listenfd, (struct sockaddr *) &cliaddr, &len);
     
     pid_t pid = fork();
+    if (pid < 0) {
+      fprintf(stderr, "fork failed... exiting\n");
+      exit(-1);
+    }
 
     // child process
     if (pid == 0) {
       close(listenfd);
-      getDataFromTheClient(sockfd);
+      getDataFromTheClient(sockfd, (const struct sockaddr_in *) &cliaddr);
       break;
     }
     // parent process
@@ -69,20 +73,23 @@ int main (int argc, char *argv[]) {
 }
 
 // listen client
-void getDataFromTheClient(int sockfd) {
+void getDataFromTheClient(int sockfd, const struct sockaddr_in *cliaddr) {
   uint f_index;
   uint f_size;
   char buf[50];
+  char clistr[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &(cliaddr->sin_addr), clistr, INET_ADDRSTRLEN);
 
-  printf("%d - Connection established!\n", sockfd);
+  printf("Connection established to %s (sockfd = %d)!\n", clistr, sockfd);
 
   while(1) {
     // read request
     int n = read(sockfd, buf, 2 * sizeof(uint));
-    if (n < 0) {
-      perror("error in meta-data read");
+    if (n <= 0) {
+      if (n < 0)
+	perror("error in meta-data read");
       break;
-    }
+    } 
     
     memcpy(&f_index, buf, sizeof(uint));
     memcpy(&f_size, buf + sizeof(uint), sizeof(uint));
@@ -117,7 +124,7 @@ void getDataFromTheClient(int sockfd) {
     } while (total > 0); 
   }
 
-  printf("\n%d - Connection closed!\n", sockfd);
+  printf("Connection to %s closed (sockfd = %d)!\n", clistr, sockfd);
   close(sockfd);
 }
 

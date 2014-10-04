@@ -17,7 +17,7 @@
 #include "ranvar.h"
 #include <limits.h>
 
-#define MAX_READSIZE 1048576
+#define READBUF_SIZE 1048576
 
 //#define DEBUG
 
@@ -32,7 +32,6 @@ pthread_t *launch_threads();
 void process_stats();
 void run_iterations();
 void cleanup();
-void write_logFile( char type[15], int size, int duration);
-
+void write_logFile(const char * type, int size, int duration);
 
 #endif

@@ -21,7 +21,7 @@
 //#define DEBUG
 
 // prototypes                                                
-void getDataFromTheClient(int sockfd);
+void getDataFromTheClient(int sockfd, const struct sockaddr_in *cliaddr);
 void read_args(int argc, char*argv[]);
 
 
