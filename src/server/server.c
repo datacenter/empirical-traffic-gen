@@ -11,10 +11,10 @@
 
 // global variables
 int serverPort;
-int listenfd;
 char flowbuf[MAX_WRITE];
 
 int main (int argc, char *argv[]) {
+  int listenfd;
   socklen_t len;
   struct sockaddr_in servaddr;
   struct sockaddr_in cliaddr;
@@ -136,7 +136,7 @@ void handle_connection(int sockfd, const struct sockaddr_in *cliaddr) {
       
       int bytes_sent = write(sockfd, flowbuf, bytes_to_send);  
       if (bytes_sent < 0) {
-	perror("error in file write");
+	perror("error in flow write");
 	goto close_connection;
       }
       
