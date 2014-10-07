@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -Wall -std=gnu99
 
-SOURCES = server.c
-HEADERS = server.h
+SOURCES = common.c server.c
+HEADERS = common.h server.h
 TARGET = server
 
 .PHONY: all clean tags submit

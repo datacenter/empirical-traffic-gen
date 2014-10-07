@@ -7,9 +7,12 @@
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include "common.h"
 #include "server.h"
 
-// global variables
+#define MAX_WRITE 104857600  // 100MB
+
+/* Global variables */
 int serverPort;
 char flowbuf[MAX_WRITE];
 
@@ -20,10 +23,10 @@ int main (int argc, char *argv[]) {
   struct sockaddr_in cliaddr;
   int sock_opt = 1;
   
-  // read command line arguments
+  /* read command line arguments */
   read_args(argc, argv);
   
-  // initialize socket
+  /* initialize socket */
   listenfd = socket(AF_INET, SOCK_STREAM, 0);
   if (listenfd < 0)
     error("ERROR opening socket");
@@ -48,7 +51,7 @@ int main (int argc, char *argv[]) {
   printf("Listening port: %d\n", serverPort);
 
   while(1) {
-    // wait for connections          
+    /* wait for connections */ 
     int sockfd;
     len = sizeof(cliaddr);
     sockfd = accept(listenfd, (struct sockaddr *) &cliaddr, &len);
@@ -59,15 +62,15 @@ int main (int argc, char *argv[]) {
     if (pid < 0)
       error("ERROR on fork");
 
-    // child process
     if (pid == 0) {
+      /* child process */
       if (close(listenfd) < 0)
 	error("child: ERROR on close");
       handle_connection(sockfd, (const struct sockaddr_in *) &cliaddr);
       break;
     }
-    // parent process
     else {
+      /* parent process */
       if (close(sockfd) < 0)
 	error("parent: ERROR on close");
     }
@@ -85,8 +88,8 @@ int main (int argc, char *argv[]) {
 void handle_connection(int sockfd, const struct sockaddr_in *cliaddr) {
   uint f_index;
   uint f_size;
-  char buf[50];
   int meta_data_size = 2 * sizeof(uint);
+  char buf[16]; /* buffer to hold meta data */
   char clistr[INET_ADDRSTRLEN];
 
   if (inet_ntop(AF_INET, &(cliaddr->sin_addr), clistr, INET_ADDRSTRLEN) == NULL)
@@ -95,56 +98,31 @@ void handle_connection(int sockfd, const struct sockaddr_in *cliaddr) {
   printf("Connection established to %s (sockfd = %d)!\n", clistr, sockfd);
 
   while(1) {
-    // read meta-data
-    int total = 0;
-    do {
-      int n = read(sockfd, buf + total, meta_data_size - total);
-      if (n <= 0) {
-	if (n < 0) 
-	  perror("ERROR in meta-data read");
-	goto close_connection;
-      }
-      total += n;
-    } while (total < meta_data_size);
-                   
+    /* read meta-data */
+    if (read_exact(sockfd, buf, meta_data_size, 16, false) 
+	!= meta_data_size)
+      break;
+
+    /* extract flow index and size */
     memcpy(&f_index, buf, sizeof(uint));
     memcpy(&f_size, buf + sizeof(uint), sizeof(uint));
 
 #ifdef DEBUG
     printf("Flow request: index: %u size: %d\n", f_index, f_size);
-#endif 
+#endif
     
-    // echo meta-data (f_index and f_size)
-    total = 0;
-    do {
-      int n = write(sockfd, buf + total, meta_data_size - total);
-      if (n < 0) {
-	perror("error in meta-data write");
-	goto close_connection;
-      }
-      total += n;
-    } while (total < meta_data_size);
-    
-    // send flow of f_size bytes
-    total = f_size;
-    do {
-      uint bytes_to_send;
-      if (total > MAX_WRITE)
-	bytes_to_send = MAX_WRITE;
-      else
-	bytes_to_send = total;
-      
-      int bytes_sent = write(sockfd, flowbuf, bytes_to_send);  
-      if (bytes_sent < 0) {
-	perror("error in flow write");
-	goto close_connection;
-      }
-      
-      total -= bytes_sent;
-    } while (total > 0); 
+    /* echo meta-data (f_index and f_size) */
+    if (write_exact(sockfd, buf, meta_data_size, MAX_WRITE, false) 
+	!= meta_data_size)
+      break;
+
+    /* send flow of f_size bytes */
+    if (write_exact(sockfd, flowbuf, f_size, MAX_WRITE, true) 
+	!= f_size)
+      break;
   }
 
- close_connection:
+  /* close_connection */
   close(sockfd);
   printf("Connection to %s closed (sockfd = %d)!\n", clistr, sockfd);
 }
@@ -153,7 +131,7 @@ void handle_connection(int sockfd, const struct sockaddr_in *cliaddr) {
  * Read command line arguments. 
  */
 void read_args(int argc, char*argv[]) {
-  // default values
+  /* default values */
   serverPort = 5000;
 
   int i = 1;
@@ -171,8 +149,3 @@ void read_args(int argc, char*argv[]) {
   }
 }
 
-void error(const char *msg)
-{
-  perror(msg);
-  exit(EXIT_FAILURE);
-}
