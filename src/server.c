@@ -88,7 +88,7 @@ int main (int argc, char *argv[]) {
 void handle_connection(int sockfd, const struct sockaddr_in *cliaddr) {
   uint f_index;
   uint f_size;
-  int meta_data_size = 2 * sizeof(uint);
+  uint meta_data_size = 2 * sizeof(uint);
   char buf[16]; /* buffer to hold meta data */
   char clistr[INET_ADDRSTRLEN];
 
