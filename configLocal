@@ -1,0 +1,7 @@
+destinations 1
+0 dest localhost 5050 -1
+distribution DCTCP_CDF
+fanouts 1
+0 fanout 1 100
+load 1000Mbps
+iterations 1500
