@@ -18,12 +18,12 @@
  * dummy_buf = false, and at least min{count, max_per_read} when 
  * dummy_buf = true. 
  */
-uint read_exact(int fd, char *buf, size_t count,
+unsigned int read_exact(int fd, char *buf, size_t count,
 		size_t max_per_read, bool dummy_buf)
 {
-  uint bytes_read = 0;
+  unsigned int bytes_read = 0;
   do {
-    uint bytes_to_read = (count > max_per_read) ? max_per_read : count; 
+    unsigned int bytes_to_read = (count > max_per_read) ? max_per_read : count; 
     char *cur_buf = (dummy_buf) ? buf : (buf + bytes_read);
     int n = read(fd, cur_buf, bytes_to_read);
     if (n <= 0) {
@@ -54,12 +54,12 @@ uint read_exact(int fd, char *buf, size_t count,
  * dummy_buf = false, and at least min{count, max_per_write} when 
  * dummy_buf = true. 
  */
-uint write_exact(int fd, const char *buf, size_t count, 
+unsigned int write_exact(int fd, const char *buf, size_t count, 
 		 size_t max_per_write, bool dummy_buf)
 {
-  uint bytes_written = 0;
+  unsigned int bytes_written = 0;
   do {
-    uint bytes_to_write = (count > max_per_write) ? max_per_write : count; 
+    unsigned int bytes_to_write = (count > max_per_write) ? max_per_write : count; 
     const char *cur_buf = (dummy_buf) ? buf : (buf + bytes_written);
     int n = write(fd, cur_buf, bytes_to_write);
     if (n < 0) { 

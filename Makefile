@@ -1,11 +1,11 @@
 all: 
 	cd src; $(MAKE); cd ..;
-	rm -rf bins
-	mkdir bins
-	cp src/client bins/.
-	cp src/server bins/.
+	rm -rf bin
+	mkdir bin
+	cp src/client bin/.
+	cp src/server bin/.
 
 clean: 
 	cd src; $(MAKE) clean; cd ..;
-	rm -rf bins
+	rm -rf bin
 

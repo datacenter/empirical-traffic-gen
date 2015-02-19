@@ -1,0 +1,5 @@
+server localhost 5050
+flow_size_dist DCTCP_CDF
+fanout 1 100
+load 1000Mbps
+num_iterations 1500

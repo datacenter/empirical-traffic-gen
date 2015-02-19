@@ -13,7 +13,7 @@ and a fanout distribution for generating incast-type requests simultaneously
 to multiple servers.
 
 Compilation:
-Just run make. The binaries will be put under ./bins/
+Just run make. The binaries will be put under ./bin/
 
 Example usage, with both processes on the same machine:
 

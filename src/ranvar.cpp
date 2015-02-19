@@ -54,7 +54,7 @@ int EmpiricalRandomVariable::loadCDF(const char* filename)
 		}
 		e = &table_[numEntry_];
 		// Use * and l together raises a warning
-		sscanf(line, "%lf %*f %lf", &e->val_, &e->cdf_);
+		sscanf(line, "%lf %lf", &e->val_, &e->cdf_);
 	}
 
 	fclose(fp);

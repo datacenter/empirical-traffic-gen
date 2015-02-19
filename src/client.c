@@ -39,7 +39,6 @@ char logIteration_name[80];
 // input parameters
 int num_dest;
 int *dest_port;
-int *src_port;
 char (*dest_addr)[20];
 
 // Flow size generator 
@@ -110,8 +109,7 @@ int main (int argc, char *argv[]) {
 
   // launch threads
   threads = launch_threads();
-
-  // usleep(3000000); // wait 3 sec
+  printf("===\n");
 
   // run iterations
   run_iterations();
@@ -153,7 +151,6 @@ void run_iterations() {
 
 void cleanup() {  
   free(dest_port);
-  free(src_port);
   free(dest_addr);
   free(sockets);
   free(threads);
@@ -334,15 +331,6 @@ void open_connections() {
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(sock_opt));
     setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &sock_opt, sizeof(sock_opt));
 
-    // bind to local port if provided; otherwise we use an ephemeral port
-    if (src_port[i] > 0) {
-      memset(&servaddr, 0, sizeof(servaddr));
-      servaddr.sin_family = AF_INET;
-      servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-      servaddr.sin_port = htons(src_port[i]);
-      bind(sock, (struct sockaddr *) &servaddr, sizeof(servaddr));
-    }      
-    
     // connect to destination server (address/port)
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -427,6 +415,9 @@ void set_iteration_variables() {
     }
   }
 
+  for (int i = 0; i < num_dest; i++) 
+    printf("Server[%d] file count: %d\n", i, dest_file_count[i]);
+
   free(temp_list);
   free(dest_list);
 }
@@ -479,55 +470,125 @@ void write_logFile(const char *type,int  size, int duration){
 
 void read_config() {
   FILE *fd;
+  char line[256];
 
   printf("Reading configuration file: %s\n", config_name);
+ 
+  // first pass: sanity check
   fd = fopen(config_name, "r");
-  
-  // destinations
-  fscanf (fd, "destinations %d\n", &num_dest);
-  printf("Number of destinations: %d\n", num_dest);
-  
-  dest_addr = (char (*)[20])malloc(num_dest * sizeof(char[20]));
-  dest_port = (int*)malloc(num_dest * sizeof(int));
-  src_port = (int*)malloc(num_dest * sizeof(int));
-  sockets = (int*)malloc(num_dest * sizeof(int));
-  dest_file_count = (uint*)malloc(num_dest * sizeof(uint));
-  
-  for (int i = 0; i < num_dest; i++) {
-    int tmp;
-    fscanf(fd, "%d dest %s %d %d\n", &tmp, dest_addr[i], &dest_port[i], &src_port[i]);
-    printf("%d\t- Dest: %s,\t%d - Src: %d\n", tmp, dest_addr[i], dest_port[i], src_port[i]);
-    
-    dest_file_count[i] = 0;
+  int num_servers = 0;
+  int num_fsize_dist = 0;
+  int num_load = 0;
+  int num_it = 0;
+  num_fanouts = 0;
+  while (fgets(line, 256, fd)) 
+  {
+    char key[80];
+    sscanf(line, "%s", key);
+    if (!strcmp(key, "server"))
+      num_servers++;
+    else if (!strcmp(key, "fanout"))
+      num_fanouts++;
+    else if (!strcmp(key, "flow_size_dist")) {
+      num_fsize_dist++;
+      if (num_fsize_dist > 1) {
+	fprintf(stderr, "config file formatting error: more than one flow_size_dist\n");
+	exit(1);
+      }
+    } else if (!strcmp(key, "load")) {
+      num_load++;
+      if (num_load > 1) {
+	fprintf(stderr, "config file formatting error: more than one load\n");
+	exit(1);
+      }
+    } else if (!strcmp(key, "num_iterations")) {
+      num_it++;
+      if (num_it > 1) {
+	fprintf(stderr, "config file formatting error: more than one num_iterations\n");
+	exit(1);
+      }
+    } else {
+      fprintf(stderr, "invalid key: %s\n", key);
+      exit(1);
+    }
+  }
+  fclose(fd);
+  if (num_servers < 1) {
+    fprintf(stderr, "config file formatting error: must provide at least one server\n");
+    exit(1);
+  }
+  if (num_fsize_dist < 1) {
+    fprintf(stderr, "config file formatting error: missing flow_size_dist\n");
+    exit(1);
+  }
+  if (num_fanouts < 1) {
+    fprintf(stderr, "config file formatting error: must provide at least one fanout\n");
+    exit(1);
+  }
+  if (num_load < 1) {
+    fprintf(stderr, "config file formatting error: missing load\n");
+    exit(1);
+  }
+  if (num_it < 1) {
+    fprintf(stderr, "config file formatting error: missing num_iterations\n");
+    exit(1);
   }
 
-  // file sizes
-  fscanf(fd, "distribution %s\n", distributionFile);
-  empRV = new EmpiricalRandomVariable(INTER_INTEGRAL, client_num*13);
-  empRV->loadCDF(distributionFile);
-  printf("Loading distributionFile: %s\n", distributionFile);
-  printf("Avg file size: %.2f bytes\n", empRV->avg());
+  // initialize
+  printf("===\nNumber of servers: %d\n", num_servers);
+  num_dest = num_servers;
+  dest_addr = (char (*)[20])malloc(num_dest * sizeof(char[20]));
+  dest_port = (int*)malloc(num_dest * sizeof(int));
+  sockets = (int*)malloc(num_dest * sizeof(int));
+  dest_file_count = (uint*)malloc(num_dest * sizeof(uint));
 
-  // fanouts
-  fscanf(fd, "fanouts %d\n", &num_fanouts);
-  printf("===\nNumber of fanouts: %d\n", num_fanouts);
+  printf("Number of fanouts: %d\n===\n", num_fanouts);
   fanout_size = (int*)malloc(num_fanouts * sizeof(int));
   fanout_prob = (int*)malloc(num_fanouts * sizeof(int));
   fanout_prob_total = 0;
 
-  for (int i = 0; i < num_fanouts; i++) {
-    int tmp;
-    fscanf(fd, "%d fanout %d %d\n", &tmp, &fanout_size[i], &fanout_prob[i]);
-    fanout_prob_total += fanout_prob[i];
-    printf("%d\t- Fanout: %d,\tProb: %d\n", tmp, fanout_size[i], fanout_prob[i]);
+  // second pass: parse
+  fd = fopen(config_name, "r");
+  num_servers = 0;
+  num_fanouts = 0;
+  while (fgets(line, 256, fd)) 
+  {
+    char key[80];
+    sscanf(line, "%s", key);
+    if (!strcmp(key, "server")) {
+      sscanf(line, "%s %s %d\n", key, dest_addr[num_servers], &dest_port[num_servers]);
+      dest_file_count[num_servers] = 0;
+      printf("Server[%d]: %s, Port:%d\n", num_servers, dest_addr[num_servers], dest_port[num_servers]);
+      num_servers++;
+    }
+
+    if (!strcmp(key, "fanout")) {
+      sscanf(line, "%s %d %d\n", key, &fanout_size[num_fanouts], &fanout_prob[num_fanouts]);
+      fanout_prob_total += fanout_prob[num_fanouts];
+      printf("Fanout: %d, Prob: %d\n", fanout_size[num_fanouts], fanout_prob[num_fanouts]);
+      num_fanouts++;
+    }
+
+    if (!strcmp(key, "flow_size_dist")) {
+      sscanf(line, "%s %s\n", key, distributionFile);
+      empRV = new EmpiricalRandomVariable(INTER_INTEGRAL, client_num*13);
+      empRV->loadCDF(distributionFile);
+      printf("Loading flow size distribution: %s\n", distributionFile);
+      printf("Avg file size: %.2f bytes\n", empRV->avg());
+    }
+
+    if (!strcmp(key, "load")) {
+      sscanf(line, "%s %lfMbps\n", key, &load);
+      printf("load: %.2f Mbps\n", load);
+    }
+
+    if (!strcmp(key, "num_iterations")) {
+      sscanf(line, "%s %d\n", key, &iter);
+      printf("Iterations: %d\n", iter);
+    }
   }
-  printf("Total fanout prob: %d\n", fanout_prob_total);
+  fclose(fd);
 
-  fscanf(fd, "load %lfMbps\n", &load);
-
-  printf("load: %.2f Mbps\n", load);
-  
-  //fscanf(fd, "period %d\n", &period);
   if (load > 0) {
     period = 8 * empRV->avg() / load;
     if (period <= 0) {
@@ -537,14 +598,8 @@ void read_config() {
   } else {
     period = -1;
   }
-
-  printf("===\nAverage flow inter-arrival period: %dus\n", period);
+  printf("Average flow inter-arrival period: %dus\n===\n", period);
   expRV = new ExponentialRandomVariable(period, client_num*133);
-  
-  fscanf(fd, "iterations %d\n", &iter);
-  printf("===\nIterations: %d\n", iter);
-  
-  fclose(fd);
 }
 
 
@@ -657,7 +712,7 @@ void *listen_connection(void *ptr) {
     file_count++;
 
     if (file_count % 1000 == 0)
-      printf("Received %d files from server %d\n", file_count, index);
+      printf("Received %d files from Server[%d]\n", file_count, index);
 
     if (period < 0) {
       pthread_mutex_lock(&inc_lock);
@@ -674,7 +729,7 @@ void *listen_connection(void *ptr) {
     }
   }
 
-  printf("\n%d - All files received from destination, total: %d\n", index, file_count);
+  printf("%d - All files received from destination, total: %d\n", index, file_count);
 
   close(sock);
 
