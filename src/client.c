@@ -196,8 +196,8 @@ void process_stats() {
   uint file_count = 0;
 
   for (int i = 0; i < iter; i++) {
-    struct timeval *i_start;
-    struct timeval *i_stop;
+    struct timeval *i_start = NULL;
+    struct timeval *i_stop = NULL;
     
     for (int j = 0; j < iteration_fanout[i]; j++) {
       uint index = i * num_dest + j;
@@ -256,7 +256,7 @@ void process_stats() {
     avg_iter_usec += i_usec;
     
     // measure iteration completion time per fanout
-    int f_index;
+    int f_index = 0;
     for (int k = 0; k < num_fanouts; k++) {
       if (fanout_size[k] == iteration_fanout[i]) {
 	f_index = k;

@@ -1,4 +1,6 @@
-This is a simple client-server application for generating user defined 
+# What is this?
+
+This is a simple client/server application for generating user defined 
 traffic patterns.
 
 The server is simple: It listens for incoming requests on the specified 
@@ -8,12 +10,19 @@ The client connects to a list of servers (given in the input configuration
 file), and generates requests to randomly chosen servers. For each request, 
 it samples from the input flow size distribution (also given in the configuration 
 file) to get the flow size for the request. The configuration file also allows 
-several customizations, importantly the desired total average receive throughput, 
+several customizations, importantly the desired average receive throughput, 
 and a fanout distribution for generating incast-type requests simultaneously 
 to multiple servers.
 
-Compilation:
-Just run make. The binaries will be put under ./bin/
+## How to build?
+
+In the main directory, run:
+
+   make 
+
+Two binaries, client and server, will be added under ./bin .
+
+## Example Usage
 
 Example usage, with both processes on the same machine:
 
