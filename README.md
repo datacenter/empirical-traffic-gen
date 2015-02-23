@@ -22,19 +22,19 @@ In the main directory, run:
 make 
 ```
 
-Two binaries, **client** and server, will be added under ./bin . This has been 
-tested with g++ 4.6.3 on Ubuntu, but the code has minimal dependencies and 
-should build on any Linux system. It does need pthread and tr1 libraries.
+Two binaries, **client** and **server**, will be added under ./bin . The build
+has been tested with g++ 4.6.3 on Ubuntu, but the code has minimal dependencies 
+and should build on any Linux system. It does need pthread and tr1 libraries.
 
 ## Command Line Arguments
 
-### Server
-
+#### Server
 Example: ./server -p 5050
 
-    **-p  :  port** on which the server should listen (optional)
-                    default: 5000
+   **-p  :  port** on which the server should listen (optional)
+           default: 5000
 
-Client:
-$ ./client -c configLocal -l test -s 123
+#### Client
+Example: ./client -c exampleFile1 -o out -s 123
 
+   **-c : config** file 

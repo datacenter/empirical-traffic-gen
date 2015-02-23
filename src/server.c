@@ -139,13 +139,23 @@ void read_args(int argc, char*argv[]) {
     if (strcmp(argv[i], "-p") == 0) {
       serverPort = atoi(argv[i+1]);
       i += 2;
+    } else if (strcmp(argv[i], "-h") == 0) {
+      print_usage();
+      exit(EXIT_FAILURE);
     } else {
       printf("invalid option: %s\n", argv[i]);
-      printf("usage: server [options]\n");
-      printf("options:\n");
-      printf("-p <value>                 port number (default 5000)\n");
+      print_usage();
       exit(EXIT_FAILURE);
     }
   }
 }
 
+/*
+ * Print usage.
+ */
+void print_usage() {
+  printf("usage: server [options]\n");
+  printf("options:\n");
+  printf("-p <value>                 port number (default 5000)\n");
+  printf("-h                           display usage information and quit\n");
+}

@@ -342,7 +342,7 @@ void open_connections() {
     if (ret < 0) {
       printf("Unable to connect. error: %s\n", strerror(errno));
       sockets[i] = -1;
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     else {
       printf("Connected to %s on port %d\n", dest_addr[i], dest_port[i]);
@@ -424,16 +424,18 @@ void set_iteration_variables() {
 
 void read_args(int argc, char*argv[]) {
   // default values
-  strcpy(config_name, "config");
+  int config_given = 0;
+
   strcpy(logFile_name, "log");
   strcpy(logIteration_name, "log");
-  
+
   client_num = 0;
 
   int i = 1;
   while (i < argc) {
     if (strcmp(argv[i], "-c") == 0) {
       strcpy(config_name, argv[i+1]);
+      config_given = 1;
       i += 2;
     } else if (strcmp(argv[i], "-l") == 0) {
       strcpy(logFile_name,argv[i+1]);
@@ -442,21 +444,34 @@ void read_args(int argc, char*argv[]) {
     } else if (strcmp(argv[i], "-s") == 0) {
       client_num = atoi(argv[i+1]);
       i+=2;
+    } else if (strcmp(argv[i], "-h") == 0) {
+      print_usage();
+      exit(EXIT_FAILURE);
     } else {
       printf("invalid option: %s\n", argv[i]);
-      printf("usage: server [options]\n");
-      printf("options:\n");
-      printf("-c <name>                  configuration file name\n");
-      printf("-l <name>                  log file name\n");
-      printf("-s <num>                   seed number\n");
-      exit(1);
+      print_usage();
+      exit(EXIT_FAILURE);
     }
+  }
+
+  if (!config_given) {
+    printf("no configuration file provided.\n");
+    print_usage();
+    exit(EXIT_FAILURE);
   }
 
   strcat(logFile_name,"File");
   strcat(logIteration_name,"Iteration");
-
   printf("Random seed: %d\n", client_num);
+}
+
+void print_usage() {
+  printf("usage: server [options]\n");
+  printf("options:\n");
+  printf("-c <string>                  configuration file\n");
+  printf("-l <string>                  prefix for output log files\n");
+  printf("-s <integer>                 seed number\n");
+  printf("-h                           display usage information and quit\n");
 }
 
 void write_logFile(const char *type,int  size, int duration){
@@ -493,45 +508,45 @@ void read_config() {
       num_fsize_dist++;
       if (num_fsize_dist > 1) {
 	fprintf(stderr, "config file formatting error: more than one flow_size_dist\n");
-	exit(1);
+	exit(EXIT_FAILURE);
       }
     } else if (!strcmp(key, "load")) {
       num_load++;
       if (num_load > 1) {
 	fprintf(stderr, "config file formatting error: more than one load\n");
-	exit(1);
+	exit(EXIT_FAILURE);
       }
     } else if (!strcmp(key, "num_iterations")) {
       num_it++;
       if (num_it > 1) {
 	fprintf(stderr, "config file formatting error: more than one num_iterations\n");
-	exit(1);
+	exit(EXIT_FAILURE);
       }
     } else {
       fprintf(stderr, "invalid key: %s\n", key);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
   }
   fclose(fd);
   if (num_servers < 1) {
     fprintf(stderr, "config file formatting error: must provide at least one server\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   if (num_fsize_dist < 1) {
     fprintf(stderr, "config file formatting error: missing flow_size_dist\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   if (num_fanouts < 1) {
     fprintf(stderr, "config file formatting error: must provide at least one fanout\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   if (num_load < 1) {
     fprintf(stderr, "config file formatting error: missing load\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
   if (num_it < 1) {
     fprintf(stderr, "config file formatting error: missing num_iterations\n");
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   // initialize
@@ -593,7 +608,7 @@ void read_config() {
     period = 8 * empRV->avg() / load;
     if (period <= 0) {
       printf("period not positive: %d\n", period);
-      exit(1);
+      exit(EXIT_FAILURE);
     }
   } else {
     period = -1;
@@ -634,7 +649,7 @@ void *run_iteration(void *ptr) {
     int n = write(sockets[iteration_destination[index]], buf, 2 * sizeof(uint));
     if (n < 0) {
       printf("error in request write: %s\n", strerror(errno)); 
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
   }
 
@@ -672,7 +687,7 @@ void *listen_connection(void *ptr) {
       n = read(sock, readbuf, meta_read_size - total);
       if (n < 0) {
 	printf("error in meta-data read: %s\n", strerror(errno));
-	exit(-1);
+	exit(EXIT_FAILURE);
       }
 
       memcpy(buf + total, readbuf, n);
@@ -680,7 +695,7 @@ void *listen_connection(void *ptr) {
     }
     if (total != meta_read_size) {
       printf("Read meta data size is incorrect!\n");
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     
     uint f_index;
@@ -705,7 +720,7 @@ void *listen_connection(void *ptr) {
 
     if (total > 0) {
       printf("failed to read: %d\n", total);
-      exit(-1);
+      exit(EXIT_FAILURE);
     }
     gettimeofday(&stop_time[f_index], NULL);
 
