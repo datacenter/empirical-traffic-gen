@@ -28,17 +28,17 @@ and should build on any Linux system. It does need pthread and tr1 libraries.
 
 ## Command Line Arguments
 
-#### Server
+### Server
 Example: 
 ```
 ./server -p 5050
 ```
-   **-p : port** on which the server should listen *(optional)*
+   **-p : port** on which the server should listen *(optional)*<br>
           *default: 5000*
 
    **-h : print commnad line usage information and exit
 
-#### Client
+### Client
 Example: 
 ```
 ./client -c exampleFile1 -l log -s 123
