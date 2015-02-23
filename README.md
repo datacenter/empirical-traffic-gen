@@ -22,7 +22,7 @@ In the main directory, run:
 make 
 ```
 
-Two binaries, client and server, will be added under ./bin . This has been 
+Two binaries, **client** and server, will be added under ./bin . This has been 
 tested with g++ 4.6.3 on Ubuntu, but the code has minimal dependencies and 
 should build on any Linux system. It does need pthread and tr1 libraries.
 
