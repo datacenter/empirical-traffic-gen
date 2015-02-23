@@ -14,20 +14,26 @@ several customizations, importantly the desired average receive throughput,
 and a fanout distribution for generating incast-type requests simultaneously 
 to multiple servers.
 
-## How to build?
+## Building
 
 In the main directory, run:
 
-   make 
+```
+make 
+```
 
-Two binaries, client and server, will be added under ./bin .
+Two binaries, client and server, will be added under ./bin . This has been 
+tested with g++ 4.6.3 on Ubuntu, but the code has minimal dependencies and 
+should build on any Linux system. It does need pthread and tr1 libraries.
 
-## Example Usage
+## Command Line Arguments
 
-Example usage, with both processes on the same machine:
+### Server
 
-Server:
-$ ./server -p 5050
+Example: ./server -p 5050
+
+    **-p  :  port** on which the server should listen (optional)
+                    default: 5000
 
 Client:
 $ ./client -c configLocal -l test -s 123
