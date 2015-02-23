@@ -460,17 +460,17 @@ void read_args(int argc, char*argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  strcat(logFile_name,"File");
-  strcat(logIteration_name,"Iteration");
+  strcat(logFile_name,"Flow");
+  strcat(logIteration_name,"Request");
   printf("Random seed: %d\n", client_num);
 }
 
 void print_usage() {
-  printf("usage: server [options]\n");
+  printf("usage: client [options]\n");
   printf("options:\n");
   printf("-c <string>                  configuration file\n");
   printf("-l <string>                  prefix for output log files\n");
-  printf("-s <integer>                 seed number\n");
+  printf("-s <integer>                 seed value\n");
   printf("-h                           display usage information and quit\n");
 }
 

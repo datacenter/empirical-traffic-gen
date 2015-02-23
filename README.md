@@ -29,12 +29,34 @@ and should build on any Linux system. It does need pthread and tr1 libraries.
 ## Command Line Arguments
 
 #### Server
-Example: ./server -p 5050
+Example: 
+```
+./server -p 5050
+```
+   **-p : port** on which the server should listen *(optional)*
+          *default: 5000*
 
-   **-p  :  port** on which the server should listen (optional)
-           default: 5000
+   **-h : print commnad line usage information and exit
 
 #### Client
-Example: ./client -c exampleFile1 -o out -s 123
+Example: 
+```
+./client -c exampleFile1 -l log -s 123
+```
+   **-c : config** file name *(required)*
+          The configuration file specifies the workload characteristics, and 
+          must be formatted as described below.
 
-   **-c : config** file 
+   **-l : log** file name prefix *(optional)*
+          The prefix is used for the two output files with flow and request
+          completion times.
+          *default: log*
+
+   **-s : seed** value *(optional)*
+          The seed is used for various random number generators. It is recommended
+          that different clients use different seeds to avoid synchronization. 
+          *default: set seed based on current machine time (not repeatable)*
+
+   **-h : print commnad line usage information and exit
+
+## Configuration File Format
