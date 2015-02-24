@@ -16,6 +16,18 @@ to generate in parallel for the request. The fanout generates synchronized
 The configuration file also allows several customizations including the 
 desired average receive throughput and the number of requests.
 
+## Quick Start
+
+1. Run make
+2. Start server
+```
+./bin/server -p 5050 >> /dev/null &
+```
+3. Start client
+```
+./bin/client -c exampleConfig1 -l log -s 123
+```
+
 ## Build
 
 In the main directory, run:
