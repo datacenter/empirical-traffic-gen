@@ -15,7 +15,7 @@ to generate in parallel for the request. The fanout generates synchronized
 The configuration file also allows several customizations including the 
 desired average receive throughput and the number of requests.
 
-## Building
+## Build
 
 In the main directory, run:
 
@@ -42,7 +42,7 @@ Example:
 ### Client
 Example: 
 ```
-./client -c exampleFile1 -l log -s 123
+./client -c exampleConfig1 -l log -s 123
 ```
    **-c : config** file name *(required)*<br>
           The configuration file specifies the workload characteristics, and 
@@ -70,23 +70,23 @@ of requests.
 The format is a sequence of key and value(s), one key per line. The permitted
 keys are:
 
-* **server:** ip address and port of an active server; e.g.
+* **server:** ip address and port of an active server.
 ```
 server localhost 5050
 server 192.168.0.1 5000
 ```
 
-* **req_size_dist:** request size distribution file path and name; e.g.
+* **req_size_dist:** request size distribution file path and name.
 ```
 req_size_dist /home/jsmith/empirical-traffic-gen/DCTCP_CDF
 ```
 
-There must be one request size distribution. The file must exist at the given 
-path and specifies the CDF of the request size distribution. See "DCTCP_CDF" 
+There must be one request size distribution file, present at the given path, 
+which specifies the CDF of the request size distribution. See "DCTCP_CDF" 
 for an example with proper formatting.
 
 * **fanout:** fanout value and weight. The fanout and weight are both 
-integers; e.g.,
+integers.
 ```
 fanout 1 50
 fanout 2 30
@@ -94,11 +94,11 @@ fanout 8 20
 ```
 
 The fanout values must be no more than the number of available servers. For 
-each request, the client chooses a fanout with probability proportional to 
-its weight. For example, with the above configuration, half the requests have
+each request, the client chooses a fanout with a probability proportional to 
+the weight. For example, with the above configuration, half the requests have
 fanout 1, and 20% have fanout 8.
 
-* **load:** average RX throughput at the client in Mbps; e.g.,
+* **load:** average RX throughput at the client in Mbps.
 ```
 load 1000Mbps
 ```
@@ -109,7 +109,7 @@ load 0
 ```
 Here, the client makes requests back-to-back as quickly as possible.
 
-* **num_reqs:** the total number of requests; e.g.,
+* **num_reqs:** the total number of requests.
 ```
 num_reqs 1500
 ```
@@ -117,8 +117,8 @@ num_reqs 1500
 
 ## Output
 
-A successful run creates two output files name $pre_reqs.out and $pre_flows.out, 
-where $prefix is the string provided via command line. The two files provide 
+A successful run creates two output files: $pre_reqs.out and $pre_flows.out, 
+where $prefix is the string provided via command line. The two files give 
 the size (in bytes) and completion time (in microseconds) for all requests and 
-flows, respectively. Note that if the fanout is always 1, requests and flows 
-(and hence the outputs) are identical.
+flows, respectively. If the fanout is always 1, requests and flows (and hence 
+the outputs) are identical.
