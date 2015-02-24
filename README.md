@@ -18,12 +18,12 @@ desired average receive throughput and the number of requests.
 
 ## Quick Start
 
-1. Run make
-2. Start server
+- Run make
+- Start server
 ```
 ./bin/server -p 5050 >> /dev/null &
 ```
-3. Start client
+- Start client
 ```
 ./bin/client -c exampleConfig1 -l log -s 123
 ```
