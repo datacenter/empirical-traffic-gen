@@ -109,6 +109,11 @@ load 0
 ```
 Here, the client makes requests back-to-back as quickly as possible.
 
+The client generates requests to roughly match the desired average throughput. 
+If the desired load is high or the CPU is busy, the timing between requests may 
+become innacurate and the actual throughput can be lower than desired. The client
+outputs the actual throughtput upon termination.
+
 * **num_reqs:** the total number of requests.
 ```
 num_reqs 1500
