@@ -1,0 +1,10 @@
+server localhost 5000
+server localhost 5001
+server localhost 5002
+server localhost 5003
+req_size_dist DCTCP_CDF
+fanout 1 50
+fanout 2 30
+fanout 4 20
+load 8000Mbps
+num_reqs 5000
