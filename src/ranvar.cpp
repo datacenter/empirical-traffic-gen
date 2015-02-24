@@ -34,7 +34,7 @@ int EmpiricalRandomVariable::loadCDF(const char* filename)
 	fp = fopen(filename, "r");
 	if (fp == NULL)
 	{
-	    printf("could not open empirical distribution %s", filename);
+	    printf("could not open empirical distribution %s\n", filename);
 	    exit(1);
 	}
 

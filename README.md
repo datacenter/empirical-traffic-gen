@@ -63,23 +63,62 @@ Example:
 
 ## Client Configuration File
 
-The client configuration file specifies the list of servers to connect to, 
-the request size and request fanout distributions, average load, and the 
-number of requests.
+The configuration file specifies the list of servers for the client, the 
+request size and request fanout distributions, average load, and the number 
+of requests.
 
 The format is a sequence of key and value(s), one key per line. The permitted
 keys are:
 
-* **server:** ip address and port of an active server; e.g., 
+* **server:** ip address and port of an active server; e.g.
 ```
 server localhost 5050
 server 192.168.0.1 5000
 ```
 
-* **req_size_dist:** request size distribution file path and name; e.g.,
+* **req_size_dist:** request size distribution file path and name; e.g.
 ```
 req_size_dist /home/jsmith/empirical-traffic-gen/DCTCP_CDF
 ```
-The file must exist at the given path and specifies the CDF of the request 
-size distribution. See "DCTCP_CDF" for an example with proper formatting.
 
+There must be one request size distribution. The file must exist at the given 
+path and specifies the CDF of the request size distribution. See "DCTCP_CDF" 
+for an example with proper formatting.
+
+* **fanout:** fanout value and weight. The fanout and weight are both 
+integers; e.g.,
+```
+fanout 1 50
+fanout 2 30
+fanout 8 20
+```
+
+The fanout values must be no more than the number of available servers. For 
+each request, the client chooses a fanout with probability proportional to 
+its weight. For example, with the above configuration, half the requests have
+fanout 1, and 20% have fanout 8.
+
+* **load:** average RX throughput at the client in Mbps; e.g.,
+```
+load 1000Mbps
+```
+
+There must only be one load in the configuration file. A special case is:
+```
+load 0
+```
+Here, the client makes requests back-to-back as quickly as possible.
+
+* **num_reqs:** the total number of requests; e.g.,
+```
+num_reqs 1500
+```
+
+
+## Output
+
+A successful run creates two output files name $pre_req.out and $pre_flow.out, 
+where $prefix is the string provided via command line. The two files provide 
+the size (in bytes) and completion time (in microseconds) for all requests and 
+flows, respectively. Note that if the fanout is always 1, requests and flows 
+(and hence the outputs) are identical.

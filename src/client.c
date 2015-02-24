@@ -292,12 +292,12 @@ void process_stats() {
   }
   
   
-  printf("=== Stats for file sizes ===\n");  
+  printf("=== Stats for flows ===\n");  
   printf("Max duration : %u usec\n", max_file_usec);
   printf("Avg iteration: %u usec\n", avg_file_usec / file_count);
   printf("Min duration: %u usec\n", min_file_usec);
   
-  printf("=== Stats for all iterations ===\n");
+  printf("=== Stats for requests ===\n");
   printf("Max iteration: %u usec\n", max_iter_usec);
   printf("Avg iteration: %u usec\n", avg_iter_usec / iter);
   printf("Min iteration: %u usec\n", min_iter_usec);
@@ -460,8 +460,8 @@ void read_args(int argc, char*argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  strcat(logFile_name,"Flow");
-  strcat(logIteration_name,"Request");
+  strcat(logFile_name,"_flows.out");
+  strcat(logIteration_name,"_reqs.out");
   printf("Random seed: %d\n", client_num);
 }
 
@@ -476,10 +476,10 @@ void print_usage() {
 
 void write_logFile(const char *type,int  size, int duration){
   if (strcmp(type,"File") == 0){
-    fprintf(fd_log, "Size:%u_Duration(usec):%u\n",size,duration); 
+    fprintf(fd_log, "Size:%u, Duration(usec):%u\n",size,duration); 
   }
   if (strcmp(type,"Iteration") == 0){
-    fprintf(fd_it, "Size:%u_Duration(usec):%u\n",size,duration);
+    fprintf(fd_it, "Size:%u, Duration(usec):%u\n",size,duration);
   }            
 }
 
@@ -504,10 +504,10 @@ void read_config() {
       num_servers++;
     else if (!strcmp(key, "fanout"))
       num_fanouts++;
-    else if (!strcmp(key, "flow_size_dist")) {
+    else if (!strcmp(key, "req_size_dist")) {
       num_fsize_dist++;
       if (num_fsize_dist > 1) {
-	fprintf(stderr, "config file formatting error: more than one flow_size_dist\n");
+	fprintf(stderr, "config file formatting error: more than one req_size_dist\n");
 	exit(EXIT_FAILURE);
       }
     } else if (!strcmp(key, "load")) {
@@ -516,10 +516,10 @@ void read_config() {
 	fprintf(stderr, "config file formatting error: more than one load\n");
 	exit(EXIT_FAILURE);
       }
-    } else if (!strcmp(key, "num_iterations")) {
+    } else if (!strcmp(key, "num_reqs")) {
       num_it++;
       if (num_it > 1) {
-	fprintf(stderr, "config file formatting error: more than one num_iterations\n");
+	fprintf(stderr, "config file formatting error: more than one num_reqs\n");
 	exit(EXIT_FAILURE);
       }
     } else {
@@ -533,7 +533,7 @@ void read_config() {
     exit(EXIT_FAILURE);
   }
   if (num_fsize_dist < 1) {
-    fprintf(stderr, "config file formatting error: missing flow_size_dist\n");
+    fprintf(stderr, "config file formatting error: missing req_size_dist\n");
     exit(EXIT_FAILURE);
   }
   if (num_fanouts < 1) {
@@ -545,7 +545,7 @@ void read_config() {
     exit(EXIT_FAILURE);
   }
   if (num_it < 1) {
-    fprintf(stderr, "config file formatting error: missing num_iterations\n");
+    fprintf(stderr, "config file formatting error: missing num_reqs\n");
     exit(EXIT_FAILURE);
   }
 
@@ -584,12 +584,12 @@ void read_config() {
       num_fanouts++;
     }
 
-    if (!strcmp(key, "flow_size_dist")) {
+    if (!strcmp(key, "req_size_dist")) {
       sscanf(line, "%s %s\n", key, distributionFile);
       empRV = new EmpiricalRandomVariable(INTER_INTEGRAL, client_num*13);
       empRV->loadCDF(distributionFile);
-      printf("Loading flow size distribution: %s\n", distributionFile);
-      printf("Avg file size: %.2f bytes\n", empRV->avg());
+      printf("Loading request size distribution: %s\n", distributionFile);
+      printf("Avg request size: %.2f bytes\n", empRV->avg());
     }
 
     if (!strcmp(key, "load")) {
@@ -597,9 +597,9 @@ void read_config() {
       printf("load: %.2f Mbps\n", load);
     }
 
-    if (!strcmp(key, "num_iterations")) {
+    if (!strcmp(key, "num_reqs")) {
       sscanf(line, "%s %d\n", key, &iter);
-      printf("Iterations: %d\n", iter);
+      printf("Number of Requests: %d\n", iter);
     }
   }
   fclose(fd);
