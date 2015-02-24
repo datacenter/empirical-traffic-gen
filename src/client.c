@@ -195,6 +195,11 @@ void process_stats() {
   uint avg_file_usec = 0;
   uint file_count = 0;
 
+  // overall stats
+  struct timeval *overall_start = NULL;
+  struct timeval *overall_stop = NULL;
+  uint64_t overall_bytes = 0;
+
   for (int i = 0; i < iter; i++) {
     struct timeval *i_start = NULL;
     struct timeval *i_stop = NULL;
@@ -240,7 +245,21 @@ void process_stats() {
       printf("File: %d,%d, size: %u duration: %u usec\n", i, j, iteration_file_size[index], f_usec);
 #endif
     }
-    
+
+    // update overall stats
+    if (overall_start == NULL || 
+	(i_start->tv_sec < overall_start->tv_sec || 
+	 (i_start->tv_sec == overall_start->tv_sec && i_start->tv_usec < overall_start->tv_usec))) {
+      overall_start = i_start;
+    }
+	
+    if (overall_stop == NULL ||
+	(i_stop->tv_sec > overall_stop->tv_sec || 
+	 (i_stop->tv_sec == overall_stop->tv_sec && i_stop->tv_usec > overall_stop->tv_usec))) {
+      overall_stop = i_stop;
+    }
+    overall_bytes += iteration_file_size[i*num_dest]*iteration_fanout[i];
+
     // measure iteration completion time
     int i_sec = i_stop->tv_sec - i_start->tv_sec;
     int i_usec = i_stop->tv_usec - i_start->tv_usec;
@@ -280,6 +299,14 @@ void process_stats() {
 #endif
 
   }
+  
+  // measure overall throuhgput
+  int64_t total_sec = overall_stop->tv_sec - overall_start->tv_sec;
+  int64_t total_usec = overall_stop->tv_usec - overall_start->tv_usec;
+  total_usec += (1000000*total_sec);
+
+  printf("===\n");
+  printf("Total RX Throughput: %fMbps\n", overall_bytes*8.0/total_usec);
   
   printf("=== Stats for fanout sizes ===\n");  
   for (int i = 0 ; i < num_fanouts; i++) {
