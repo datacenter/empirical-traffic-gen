@@ -12,7 +12,7 @@ it samples from the input request size and fanout distributions (also specified
 in the configuration file) to determine the request size and how many flows 
 to generate in parallel for the request. The fanout generates synchronized 
 *incast-like* flows from a random subset of the servers towards the client.
-The configuration file also allows several customizations, importantly, the 
+The configuration file also allows several customizations including the 
 desired average receive throughput and the number of requests.
 
 ## Building
@@ -117,7 +117,7 @@ num_reqs 1500
 
 ## Output
 
-A successful run creates two output files name $pre_req.out and $pre_flow.out, 
+A successful run creates two output files name $pre_reqs.out and $pre_flows.out, 
 where $prefix is the string provided via command line. The two files provide 
 the size (in bytes) and completion time (in microseconds) for all requests and 
 flows, respectively. Note that if the fanout is always 1, requests and flows 
