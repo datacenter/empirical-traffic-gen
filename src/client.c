@@ -134,17 +134,13 @@ int main (int argc, char *argv[]) {
 
 void run_iterations() {
   if (period < 0) {
-    int *i_index = (int*)malloc(sizeof(int));
     req_index = 0;
-    *i_index = req_index;
-    run_iteration(i_index);
+    run_iteration(req_index);
   } 
   else {
     for (int i = 0; i < iter; i++) {
-      int *i_index = (int*)malloc(sizeof(int));
-      *i_index = i;
       usleep(iteration_sleep_time[i]);
-      run_iteration(i_index);
+      run_iteration(i);
     }
   }
 }
@@ -645,28 +641,25 @@ void read_config() {
 }
 
 
-void *run_iteration(void *ptr) {
-  int i = *((int *)ptr);
+void run_iteration(int it) {
   char buf[30];
    
-  free(ptr);
-
   if (period < 0) {
-    req_file_count = iteration_fanout[i];
+    req_file_count = iteration_fanout[it];
   }
 
 #ifdef DEBUG
   struct timeval tstart, tstop;
   int usec;
   int sec;
-  printf("Iteration: %d, fanout: %d\n", i, iteration_fanout[i]);
+  printf("Iteration: %d, fanout: %d\n", it, iteration_fanout[it]);
   gettimeofday(&tstart, NULL);
 #endif
 
   // send requests
-  for (int j = 0; j < iteration_fanout[i]; j++) {
+  for (int j = 0; j < iteration_fanout[it]; j++) {
     //printf("Iteration: %d, Reqeust: %d..\n", i, j);
-    uint index = i * num_dest + j;
+    uint index = it * num_dest + j;
     
     memcpy(buf, &index, sizeof(uint));
     memcpy(buf + sizeof(uint), &iteration_file_size[index], sizeof(uint));    
@@ -692,7 +685,6 @@ void *run_iteration(void *ptr) {
   printf("Duration: %u usec\n", usec); 
 #endif
   
-  return NULL;
 }
 
 void *listen_connection(void *ptr) {
@@ -762,9 +754,7 @@ void *listen_connection(void *ptr) {
       if (req_file_count == 0) {
 	req_index++;
 	if (req_index < iter) {
-	  int *i_index = (int*)malloc(sizeof(int));
-	  *i_index = req_index;
-	  run_iteration(i_index);
+	  run_iteration(req_index);
 	}
       }
       pthread_mutex_unlock(&inc_lock);

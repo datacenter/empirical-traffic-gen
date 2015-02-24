@@ -22,7 +22,7 @@
 //#define DEBUG
 
 // prototypes
-void *run_iteration(void *ptr);
+void run_iteration(int it);
 void *listen_connection(void *ptr);
 void read_config();
 void print_usage();
