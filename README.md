@@ -1,4 +1,5 @@
-# What is this?
+# Empirical Traffic Generator
+## What is this?
 
 This is a simple client/server application for generating user defined 
 traffic patterns.
